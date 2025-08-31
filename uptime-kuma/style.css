@@ -1,0 +1,63 @@
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+
+/* 版权页脚 */
+footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+footer .alert-heading,
+footer .alert-heading p,
+footer > p,
+footer .refresh-info {
+  margin: 0;
+  padding: 0;
+}
+
+footer > p {
+  margin-top: 3px;
+}
+footer .refresh-info {
+  margin-top: 10px;
+}
+
+footer .alert-heading p {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.refresh-info {
+  display: flex;
+  align-items: center;
+}
+.refresh-info div:last-child::before {
+  content: "|";
+  margin: 0 10px;
+  color: inherit;
+}
+
+footer,
+footer a,
+footer a:link,
+footer a:visited {
+    color: #7F7F7E !important;
+}
+footer a:hover {
+    color: #007BFF !important;
+}
+
+/* --- 移动端适配 --- */
+@media (max-width: 480px) {
+  footer {
+    font-size: 0.65rem;
+  }
+  footer .alert-heading p {
+    gap: 5px;
+  }
+}
