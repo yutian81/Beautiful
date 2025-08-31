@@ -1,0 +1,110 @@
+[
+    {
+        "name": "今日热榜",
+        "url": "https://newsnow.busiyi.world",
+        "icon": "fas fa-fire",
+        "background": "linear-gradient(45deg, #e04a4a, #e6a82d)"
+    },
+    {
+        "name": "Github",
+        "url": "https://github.com",
+        "icon": "fab fa-github",
+        "background": "linear-gradient(45deg, #2c2f33, #4b5aa0)"
+    },
+    {
+        "name": "Cloudflare",
+        "url": "https://dash.cloudflare.com",
+        "icon": "fas fa-cloud",
+        "background": "linear-gradient(45deg, #e6892c, #e6b25a)"
+    },
+    {
+        "name": "ITDog",
+        "url": "https://www.itdog.cn/ping",
+        "icon": "fas fa-dog",
+        "background": "linear-gradient(45deg, #9440a0, #4a78c0)"
+    },
+    {
+        "name": "谷歌测速",
+        "url": "https://fiber.google.com/speedtest",
+        "icon": "fas fa-tachometer-alt",
+        "background": "linear-gradient(45deg, #457de0, #4ca95a)"
+    },
+    {
+        "name": "ProxyIP检测",
+        "url": "https://kaic.hidns.co/",
+        "icon": "fas fa-shield-alt",
+        "background": "linear-gradient(45deg, #29b0e0, #2a80e0)"
+    },
+    {
+        "name": "IP纯净度",
+        "url": "https://ping0.cc/",
+        "icon": "fas fa-filter",
+        "background": "linear-gradient(45deg, #409a40, #ddca44)"
+    },
+    {
+        "name": "IP查询",
+        "url": "https://ip125.com/myip/",
+        "icon": "fas fa-map-marker-alt",
+        "background": "linear-gradient(45deg, #596db0, #2b3870)"
+    },
+    {
+        "name": "DNS大全",
+        "url": "https://dns.icoa.cn/#china",
+        "icon": "fas fa-server",
+        "background": "linear-gradient(45deg, #3aa494, #63cfcf)"
+    },
+    {
+        "name": "短链接生成",
+        "url": "https://slink.yuzong.nyc.mn/duanlian",
+        "icon": "fas fa-link",
+        "background": "linear-gradient(45deg, #e64ce6, #4cbfdf)"
+    },
+    {
+        "name": "订阅转换",
+        "url": "https://subweb.dayutian.com/",
+        "icon": "fas fa-exchange-alt",
+        "background": "linear-gradient(45deg, #e64a7a, #e67b3f)"
+    },
+    {
+        "name": "优选订阅器",
+        "url": "https://dy.yomoh.ggff.net/",
+        "icon": "fas fa-rss",
+        "background": "linear-gradient(45deg, #e67d4f, #e6a05f)"
+    },
+    {
+        "name": "WebSSH",
+        "url": "https://ssh.yuzong.nyc.mn/",
+        "icon": "fas fa-terminal",
+        "background": "linear-gradient(45deg, #222222, #555555)"
+    },
+    {
+        "name": "Cron-job",
+        "url": "https://console.cron-job.org/",
+        "icon": "fas fa-clock",
+        "background": "linear-gradient(45deg, #7948a5, #6574a5)"
+    },
+    {
+        "name": "兰空图床",
+        "url": "https://img.811520.xyz/",
+        "icon": "fas fa-images",
+        "background": "linear-gradient(45deg, #4dbde0, #5a7be0)"
+    },
+    {
+        "name": "封面图制作",
+        "url": "https://cover.ruom.top/",
+        "icon": "fas fa-image",
+        "background": "linear-gradient(45deg, #e6809e, #e69acc)"
+    },
+    {
+        "name": "接口调试",
+        "url": "https://hoppscotch.io/",
+        "icon": "fas fa-plug",
+        "background": "linear-gradient(45deg, #7b87e0, #8752b8)"
+    },
+    {
+        "name": "即时工具箱",
+        "url": "https://www.67tool.com/",
+        "icon": "fas fa-tools",
+        "background": "linear-gradient(45deg, #4db0e0, #b04de0)"
+    }
+]
