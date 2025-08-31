@@ -1,0 +1,27 @@
+[
+    {
+        "name": "Bing",
+        "url": "https://www.bing.com/search?q=",
+        "icon": "fab fa-microsoft"
+    },
+    {
+        "name": "谷歌",
+        "url": "https://www.google.com/search?q=",
+        "icon": "fab fa-google"
+    },
+    {
+        "name": "百度",
+        "url": "https://www.baidu.com/s?wd=",
+        "icon": "fas fa-bold"
+    },
+    {
+        "name": "Github",
+        "url": "https://github.com/search?q=",
+        "icon": "fab fa-github"
+    },
+    {
+        "name": "站内搜索",
+        "url": "/search/",
+        "icon": "fas fa-search-location"
+    }
+]
