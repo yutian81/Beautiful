@@ -11,6 +11,10 @@
 > 官方版通信域名使用非cdn域名，若未为该域名申请证书，TLS 请选择 N
 > 容器版只需要一个域名，agent 对接地址：`argo域名:443`，需要开启 TLS
 
+## 调优教程
+
+https://blog.811520.xyz/post/2025/08/250831-nezhav1-guanfang/
+
 ## 备份和恢复
 
 代码见 `nzbak.sh`，将其上传到 vps 的 /root 目录并填写其中的变量
