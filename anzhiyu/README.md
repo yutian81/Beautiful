@@ -24,9 +24,21 @@ npm install --save hexo-blog-encrypt crypto-js
 
 - 在 inject: 字段的 bottom: 字段下引入以下 js 文件
 
-```
+```yml
 - <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 - <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 - <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.5/purify.min.js"></script>
 - <script src="/js/encrypt.js"></script>
+```
+
+## 用法
+
+将要加密的内容用按以下格式包裹，其中 `333` 就是你设定的密码：
+
+```
+{% encrypt "333" %}  
+**这是加密内容**
+- 输入密码后回车即可
+- 7 天内再次访问本页面无需密码  
+{% endencrypt %}
 ```
