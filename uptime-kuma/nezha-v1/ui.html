@@ -1,0 +1,122 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+<script>
+  // 全局变量设置
+  window.CustomBackgroundImage = "https://pan.811520.xyz/icon/bg_dark.webp";
+  window.ShowNetTransfer = true;
+  window.CustomLinks = "[{\"link\":\"/dashboard/profile\",\"name\":\"用户设置\"},{\"link\":\"/dashboard/settings\",\"name\":\"系统设置\"}]";
+
+  // --- 页脚注入逻辑 ---
+  const customFooterHtml = `
+    <span id="my-custom-footer" style="display: contents;">
+      <span class="mx-1">|</span>
+      <a href="https://github.com/yutian81/Argo-Nezha-Service-Container" target="_blank" class="flex items-center gap-1"><i class="fab fa-github"></i> GitHub</a>
+      <span class="mx-1">|</span>
+      <a href="https://blog.811520.xyz/post/2025/08/250831-nezhav1-guanfang/" target="_blank" class="flex items-center gap-1"><i class="fas fa-blog"></i> QingYun Blog</a>
+    </span>
+  `;
+
+  // 使用 MutationObserver 监视 DOM 变化
+  const observer = new MutationObserver((mutationsList, obs) => {
+    const targetDiv = document.querySelector('.server-footer-name > div:first-child');
+    if (targetDiv && !document.getElementById('my-custom-footer')) {
+      targetDiv.insertAdjacentHTML('beforeend', customFooterHtml);
+      obs.disconnect(); // 找到并注入后，立刻停止观察，节省资源
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+</script>
+
+<style>
+/* --- 顶部按钮图标通用样式 --- */
+a[href="/dashboard"]::before,
+a[href="/dashboard/profile"]::before,
+a[href="/dashboard/settings"]::before {
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  position: relative;
+  top: 1px;
+}
+
+/* 顶部按钮独立图标内容 */
+a[href="/dashboard"]::before { content: "\f013"; }
+a[href="/dashboard/profile"]::before { content: "\f4fe"; }
+a[href="/dashboard/settings"]::before { content: "\f085"; }
+
+/* 顶部按钮分隔符 */
+a[href="/dashboard/profile"]::after,
+a[href="/dashboard/settings"]::after {
+  content: "|";
+  margin-left: 0.3em;
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* 概览卡片添加图标 */
+/* 1. 服务器总数 */
+.server-overview > div:nth-child(1) p.font-medium::before {
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  content: "\f233"; /* fa-server */
+  color: #3b82f6;
+  margin-right: 0.5em;
+  position: relative;
+  top: 1px;
+}
+
+/* 2. 在线服务器 */
+.server-overview > div:nth-child(2) p.font-medium::before {
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  content: "\f058"; /* fa-circle-check */
+  color: #22c55e;
+  margin-right: 0.5em;
+  position: relative;
+  top: 1px;
+}
+
+/* 3. 离线服务器 */
+.server-overview > div:nth-child(3) p.font-medium::before {
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  content: "\f057"; /* fa-circle-xmark */
+  color: #ef4444;
+  margin-right: 0.5em;
+  position: relative;
+  top: 1px;
+}
+
+/* 4. 网络 */
+.server-overview > div:nth-child(4) > div > section > div > p.font-medium::before {
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  content: "\f0ac"; /* fa-globe */
+  color: #B079E6;
+  margin-right: 0.5em;
+  position: relative;
+  top: 1px;
+}
+
+/* --- 通用链接 hover 效果 --- */
+#my-custom-footer a,
+.server-footer-name > div:first-child > a[href*="naiba/nezha"],
+a[href="/dashboard"],
+a[href="/dashboard/settings"],
+a[href="/dashboard/profile"] {
+  transition: color 0.2s ease-in-out;
+}
+#my-custom-footer a:hover,
+.server-footer-name > div:first-child > a[href*="naiba/nezha"]:hover,
+a[href="/dashboard"]:hover,
+a[href="/dashboard/settings"]:hover,
+a[href="/dashboard/profile"]:hover {
+  color: #F59E0B !important;
+}
+
+/* --- 移动端适配 --- */
+@media (max-width: 480px) {
+  .server-footer-name {
+    white-space: nowrap;
+    font-size: 0.8em;
+  }
+}
+</style>
