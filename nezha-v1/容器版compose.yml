@@ -1,0 +1,26 @@
+networks:
+  argo-nezha:
+    name: argo-nezha
+
+services:
+  argo-nezha:
+    image: mikehand888/argo-nezha:latest
+    pull_policy: always
+    container_name: argo-nezha
+    restart: always
+    networks:
+      - argo-nezha
+    environment:
+      - GH_USER=github用户名
+      - GH_EMAIL=github邮箱
+      - GH_PAT=github个人访问token
+      - GH_BACKUP_USER=github备份仓库用户名
+      - GH_REPO=github备份仓库名
+      - GH_CLIENTID=github认证ID
+      - GH_CLIENTSECRET=github认证秘钥
+      - ARGO_AUTH=cf argo token
+      - ARGO_DOMAIN=cf argo域名
+    volumes:
+      - ./data:/dashboard/data
+    ports:
+      - 8080:8080
