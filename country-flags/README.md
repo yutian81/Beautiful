@@ -1,7 +1,7 @@
 ## 引入 cdn
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/yutian81/cdn@main/country-flags/flags_v1.0.0.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/yutian81/Beautiful@main/country-flags/flags_v1.0.0.js"></script>
 ```
 
 ## 使用
