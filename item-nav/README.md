@@ -1,6 +1,8 @@
-## 原作者仓库
+## 仓库资源
 
-https://github.com/fordes123/ITEM
+原作者：https://github.com/fordes123/ITEM
+
+我fork的：https://github.com/yutian81/ITEM
 
 ## 修复原项目站内搜索不生效的问题（serv00 平台）
 
