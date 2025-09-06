@@ -14,4 +14,4 @@ const UPSTREAM_URL = 'https://xxxxxx.deno.dev'; // 此处替换为部署好的�
 
 - **将自定义域名替换容器 xhttp 节点的 host 和 sni**
 
-- **修改入口地址为 CF CDN 域名（如 time.js）或优选IP**
+- **修改入口地址为 CF CDN 域名（如 time.is）或优选IP**
