@@ -10,7 +10,7 @@ $网站图标 = getenv('ICO') ?: 'https://cf-assets.www.cloudflare.com/dzlvafdwd
 $永久TOKEN = getenv('TOKEN') ?: null;
 $URL302 = getenv('URL302');
 $URL = getenv('URL');
-$BEIAN = getenv('BEIAN') ?: '&copy; 2025 Check Socks5/HTTP - 基于 PHP 构建的高性能代理验证服务 | by cmliu';
+$BEIAN = getenv('BEIAN') ?: '© 2025 ProxyIP Check';
 $IMG = getenv('IMG');
 
 
@@ -290,10 +290,10 @@ function 代理URL($代理网址, $目标网址) {
 /**
  * 输出主页面 HTML
  */
-function HTML($网站图标, $网络备案, $img, $临时TOKEN) {
+function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
     $网站图标_html = $网站图标 ? '<link rel="icon" href="' . htmlspecialchars($网站图标) . '" type="image/x-icon">' : '';
     $img_style = $img ? "background-image: url('" . htmlspecialchars($img) . "');" : "background: #ffffff;";
-    $网络备案_html = htmlspecialchars($网络备案);
+    $网络备案_html = $BEIAN;
     $临时TOKEN_JS = htmlspecialchars($临时TOKEN);
 
     header('Content-Type: text/html; charset=UTF-8');
