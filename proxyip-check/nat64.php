@@ -378,7 +378,7 @@ function HTML($hostname, $网站图标, $BEIAN, $临时TOKEN) {
         <button class="check-btn" onclick="checkNAT64()">🚀 开始检测</button>
         <div class="loading" id="loading"><div class="loading-spinner"></div></div>
         <div class="result" id="result"></div>
-        <div class="footer">$BEIAN</div>
+        <div class="footer">{$BEIAN}</div>
     </div>
     <div class="toast" id="toast"></div>
     <script>
