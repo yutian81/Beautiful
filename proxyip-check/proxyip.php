@@ -900,7 +900,45 @@ function HTML($hostname, $网站图标, $BEIAN, $临时TOKEN) {
       visibility: visible;
       opacity: 1;
     }
+
+    .footer {
+        text-align: center;
+        padding: 30px 20px 20px;
+        color: rgba(255,255,255,0.85);
+        font-size: 15px;
+        margin-top: 20px;
+        border-top: 1px solid rgba(255,255,255,0.15);
+        backdrop-filter: blur(5px);
+        border-radius: 0 0 var(--border-radius) var(--border-radius);
+    }
     
+    .footer a {
+        color: rgba(255,255,255,0.92);
+        text-decoration: none;
+        transition: all 0.3s ease;
+        position: relative;
+        padding-bottom: 2px;
+    }
+    
+    .footer a::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        height: 1px;
+        background: white;
+        transition: width 0.3s ease;
+    }
+    
+    .footer a:hover::after {
+        width: 100%;
+    }
+    
+    .footer a:hover {
+        color: white;
+    }        
+        
     @media (max-width: 768px) {
       .tooltip .tooltiptext {
         width: 90vw;
