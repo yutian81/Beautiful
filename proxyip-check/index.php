@@ -444,7 +444,7 @@
                     <div class="tool-icon">🌐</div>
                     <h3 class="tool-title">ProxyIP 可用性检测</h3>
                     <p class="tool-desc">检测 ProxyIP 的连接性、响应时间和可用性，确保您的代理服务稳定可靠</p>
-                    <a href="https://check.proxyip.cmliussss.net/" class="btn btn-primary" target="_blank">
+                    <a href="./proxyip.php" class="btn btn-primary">
                         <span class="btn-icon">🔍</span> 立即检测
                     </a>
                 </div>
@@ -453,7 +453,7 @@
                     <div class="tool-icon">🔒</div>
                     <h3 class="tool-title">Socks5/HTTP 代理检测</h3>
                     <p class="tool-desc">全面测试Socks5和HTTP代理的连通性、认证机制和传输性能</p>
-                    <a href="https://check.socks5.cmliussss.net/" class="btn btn-primary" target="_blank">
+                    <a href="./socks5.php" class="btn btn-primary">
                         <span class="btn-icon">🔍</span> 立即检测
                     </a>
                 </div>
@@ -462,7 +462,7 @@
                     <div class="tool-icon">🔄</div>
                     <h3 class="tool-title">DNS64/NAT64 可用性检测</h3>
                     <p class="tool-desc">验证DNS64和NAT64转换服务的可用性及IPv6转换效率</p>
-                    <a href="https://check.nat64.cmliussss.net/" class="btn btn-primary" target="_blank">
+                    <a href="./nat64.php" class="btn btn-primary">
                         <span class="btn-icon">🔍</span> 立即检测
                     </a>
                 </div>
