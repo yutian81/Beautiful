@@ -1,3 +1,6 @@
 SetEnv ICO "https://your_icon_url/favicon.ico"
 SetEnv TOKEN "your_secret_token_here_12345"
 SetEnv URL302 "https://example.com/redirect1|https://example.com/redirect2"
+SetEnv URL ""
+SetEnv BEIAN ""
+SetEnv IMG ""
