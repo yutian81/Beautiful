@@ -1078,9 +1078,7 @@ curl "https://$hostname/check?proxyip=1.2.3.4:443"
       </div>
     </div>
     
-    <div class="footer">
-      $BEIAN
-    </div>
+    <div class="footer">{$BEIAN}</div>
   </div>
 
   <div id="toast" class="toast"></div>
