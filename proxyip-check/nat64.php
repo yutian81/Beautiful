@@ -209,7 +209,7 @@ function resolveToIPv6($target, $DNS64Server) {
 /**
  * HTML 主页面
  */
-function HTML($hostname, $网站图标, $临时TOKEN) {
+function HTML($hostname, $网站图标, $BEIAN, $临时TOKEN) {
     $hostname_js = htmlspecialchars($hostname);
     $网站图标_html = htmlspecialchars($网站图标);
     $临时TOKEN_JS = htmlspecialchars($临时TOKEN);
@@ -311,6 +311,45 @@ function HTML($hostname, $网站图标, $临时TOKEN) {
         .github-corner svg { fill: rgba(102, 126, 234, 0.9); color: #fff; width: 80px; height: 80px; }
         .github-corner:hover .octo-arm { animation: octocat-wave 560ms ease-in-out; }
         @keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}
+
+        .footer {
+            text-align: center;
+            padding: 30px 20px 20px;
+            color: rgba(255,255,255,0.85);
+            font-size: 15px;
+            margin-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.15);
+            backdrop-filter: blur(5px);
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+        }
+        
+        .footer a {
+            color: rgba(255,255,255,0.92);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            position: relative;
+            padding-bottom: 2px;
+        }
+        
+        .footer a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background: white;
+            transition: width 0.3s ease;
+        }
+        
+        .footer a:hover::after {
+            width: 100%;
+        }
+        
+        .footer a:hover {
+            color: white;
+        }
+        
     </style>
 </head>
 <body>
@@ -339,6 +378,7 @@ function HTML($hostname, $网站图标, $临时TOKEN) {
         <div class="loading" id="loading"><div class="loading-spinner"></div></div>
         <div class="result" id="result"></div>
     </div>
+    <div class="footer">$BEIAN</div>
     <div class="toast" id="toast"></div>
     <script>
         const hostname = '{$hostname_js}';
@@ -437,7 +477,7 @@ switch ($path) {
         break;
 
     default:
-        HTML($hostname, $网站图标, $临时TOKEN);
+        HTML($hostname, $网站图标, $BEIAN, $临时TOKEN);
         break;
 }
 
