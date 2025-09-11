@@ -7,6 +7,7 @@
 // --- 1. 配置 & 环境变量读取 ---
 $网站图标 = getenv('ICO') ?: 'https://cf-assets.www.cloudflare.com/dzlvafdwdttg/19kSkLSfWtDcspvQI5pit4/c5630cf25d589a0de91978ca29486259/performance-acceleration-bolt.svg';
 $永久TOKEN = getenv('TOKEN') ?: null;
+$BEIAN = getenv('BEIAN') ?: '© 2025 ProxyIP Check';
 
 // --- 2. 核心工具函数 ---
 
