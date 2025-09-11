@@ -8,7 +8,7 @@ $网站图标 = getenv('ICO') ?: 'https://cf-assets.www.cloudflare.com/dzlvafdwd
 $永久TOKEN = getenv('TOKEN') ?: null; // 从环境变量读取永久TOKEN
 $URL302 = getenv('URL302');
 $URL = getenv('URL');
-
+$BEIAN = getenv('BEIAN') ?: '© 2025 ProxyIP Check';
 
 // --- 2. 核心工具函数 ---
 
@@ -310,7 +310,7 @@ HTML;
  * @param string $网站图标
  * @param string $临时TOKEN
  */
-function HTML($hostname, $网站图标, $临时TOKEN) {
+function HTML($hostname, $网站图标, $BEIAN, $临时TOKEN) {
     // 使用htmlspecialchars防止XSS攻击
     $hostname = htmlspecialchars($hostname, ENT_QUOTES, 'UTF-8');
     $网站图标 = htmlspecialchars($网站图标, ENT_QUOTES, 'UTF-8');
@@ -1041,7 +1041,7 @@ curl "https://$hostname/check?proxyip=1.2.3.4:443"
     </div>
     
     <div class="footer">
-      <p style="margin-top: 8px; opacity: 0.8;">© 2025 Check ProxyIP - 基于 PHP 构建的高性能 ProxyIP 验证服务 | 由 <strong>cmliu</strong> 开发</p>
+      $BEIAN
     </div>
   </div>
 
@@ -1616,7 +1616,7 @@ switch ($path) {
              nginx();
         } else {
              // 默认显示主HTML页面
-             HTML($hostname, $网站图标, $临时TOKEN);
+             HTML($hostname, $网站图标, $BEIAN, $临时TOKEN);
         }
         break;
 }
