@@ -4,15 +4,15 @@
 // 增加错误报告，方便调试
 // ini_set('display_errors', 1);
 // error_reporting(E_ALL);
+require_once 'config.php';
 
 // --- 1. 配置 & 环境变量读取 ---
-$网站图标 = getenv('ICO') ?: 'https://cf-assets.www.cloudflare.com/dzlvafdwdttg/19kSkLSfWtDcspvQI5pit4/c5630cf25d589a0de91978ca29486259/performance-acceleration-bolt.svg';
-$永久TOKEN = getenv('TOKEN') ?: null;
-$URL302 = getenv('URL302');
-$URL = getenv('URL');
-$BEIAN = getenv('BEIAN') ?: '© 2025 ProxyIP Check';
-$IMG = getenv('IMG');
-
+$网站图标 = defined('ICO') && ICO ? ICO : 'https://cf-assets.www.cloudflare.com/dzlvafdwdttg/19kSkLSfWtDcspvQI5pit4/c5630cf25d589a0de91978ca29486259/performance-acceleration-bolt.svg';
+$永久TOKEN = defined('TOKEN') && TOKEN ? TOKEN : null;
+$URL302 = defined('URL302') ? URL302 : null;
+$URL = defined('URL') ? URL : null;
+$BEIAN = defined('BEIAN') && BEIAN ? BEIAN : '© 2025 ProxyIP Check';
+$IMG = defined('IMG') ? IMG : null;
 
 // --- 2. 核心工具函数 ---
 
@@ -29,7 +29,7 @@ function 双重哈希($文本) {
  * 将多种分隔符的字符串整理成唯一的数组
  */
 function 整理($内容) {
-    $替换后的内容 = preg_replace('/[	|"\'\r\n]+/', ',', $内容);
+    $替换后的内容 = preg_replace('/[  |"\'\r\n]+/', ',', $内容);
     $替换后的内容 = preg_replace('/,+/', ',', $替换后的内容);
     $替换后的内容 = trim($替换后的内容, ',');
     return array_filter(explode(',', $替换后的内容));
@@ -332,8 +332,12 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
       border: 1px solid rgba(255, 255, 255, 0.2); overflow: hidden;
     }
     .header {
-      padding: 32px; border-bottom: 1px solid var(--border-color);
-      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;
+      padding: 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
       position: relative;
     }
     .header::before {
@@ -360,13 +364,29 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
     .header-input button:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(52, 152, 219, 0.2); }
     .header-input button:disabled { background: #adb5bd; cursor: not-allowed; transform: none; box-shadow: none; }
     .results-section {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
-        background-color: var(--border-color);
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        padding: 0 32px 0px 32px;
     }
-    .info-card { background: var(--bg-primary); padding: 24px; }
-    .info-card h3 { font-size: 1.5rem; margin-bottom: 20px; color: var(--text-primary); border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; }
+    .info-card {
+        background: var(--bg-secondary);
+        padding: 24px;
+        border-radius: var(--border-radius-sm);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+    }
+    .info-card h3 {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        color: var(--text-primary);
+        border-bottom: 2px solid var(--primary-color);
+        padding-bottom: 10px;
+    }
     .info-content .waiting, .info-content .loading, .info-content .error {
-        text-align: center; color: var(--text-secondary); padding: 40px 0;
+        text-align: center;
+        color: var(--text-secondary);
+        padding: 40px 0;
     }
     .info-content .error { color: var(--error-color); }
     .spinner {
@@ -410,23 +430,23 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
 
     .footer {
         text-align: center;
-        padding: 30px 20px 20px;
-        color: rgba(255,255,255,0.85);
+        padding: 25px 15px 25px 15px;
         font-size: 15px;
-        margin-top: 20px;
-        border-top: 1px solid rgba(255,255,255,0.15);
-        backdrop-filter: blur(5px);
+        /*border-top: 1px solid var(--border-color);*/
         border-radius: 0 0 var(--border-radius) var(--border-radius);
+        background: transparent;
+        backdrop-filter: none;
+        color: #7B838A;
     }
-    
+
     .footer a {
-        color: rgba(255,255,255,0.92);
+        color: #7B838A;
         text-decoration: none;
         transition: all 0.3s ease;
         position: relative;
         padding-bottom: 2px;
     }
-    
+
     .footer a::after {
         content: '';
         position: absolute;
@@ -434,16 +454,17 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
         left: 0;
         width: 0;
         height: 1px;
-        background: white;
+        background: #7B838A;
         transition: width 0.3s ease;
     }
-    
+
+    .footer a:hover {
+        color: #3293D4;
+    }
+
     .footer a:hover::after {
         width: 100%;
-    }
-    
-    .footer a:hover {
-        color: white;
+        background: #3293D4;
     }
 
     @media (max-width: 768px) {
@@ -526,7 +547,7 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
                 return;
             }
             
-            const ipDisplay = showIPSelector && currentDomainInfo && currentDomainInfo.all_ips.length > 1 
+            const ipDisplay = showIPSelector && currentDomainInfo && currentDomainInfo.all_ips.length > 1
                 ? \`<div class="ip-selector">
                         <span class="ip-text">\${data.resolved_ip || data.ip || 'N/A'}</span>
                         <button class="more-ip-btn" onclick="toggleIPDropdown(event)">\${currentDomainInfo.all_ips.length} IPs</button>
