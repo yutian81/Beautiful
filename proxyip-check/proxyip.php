@@ -12,27 +12,67 @@ $BEIAN = defined('BEIAN') && BEIAN ? BEIAN : '© 2025 ProxyIP Check';
 
 // --- 2. 核心工具函数 ---
 function isExcludedIP($ip) {
-    if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-        return false;
+    $is_ipv4 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
+    $is_ipv6 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6);
+
+    if (!$is_ipv4 && !$is_ipv6) {
+        return false; // 如果不是有效的IP地址，则不排除
     }
+
     $excluded_cidrs = [
-        '1.0.0.0/24', '1.1.1.0/24', '103.21.244.0/22', '103.22.200.0/22', '103.31.4.0/22',
-        '104.16.0.0/13', '108.162.192.0/18', '131.0.72.0/22', '141.101.64.0/18', '162.158.0.0/15',
-        '172.64.0.0/13', '173.245.48.0/20', '188.114.96.0/20', '190.93.240.0/20', '197.234.240.0/22',
-        '198.41.128.0/17', '8.8.8.0/24', '8.8.4.0/24', '9.9.9.9/32', '149.112.112.112/32',
-        '208.67.222.222/32', '208.67.220.220/32', '2606:4700::/32', '2803:f800::/32', '2400:cb00::/32',
-        '2405:b500::/32', '2405:8100::/32', '2a06:98c0::/29', '2c0f:f248::/32', '2001:4860:4860::8888/128',
-        '2001:4860:4860::8844/128', '2620:fe::fe/128', '2620:fe::9/128', '2620:119:35::35/128', '2620:119:53::53/128'
+        // 1. Cloudflare 自身的IP地址段 (模拟Worker无法连接自身的限制)
+        '1.0.0.0/24', '1.1.1.0/24', '103.21.244.0/22', '103.22.200.0/22',
+        '103.31.4.0/22', '104.16.0.0/13', '108.162.192.0/18', '131.0.72.0/22',
+        '141.101.64.0/18', '162.158.0.0/15', '172.64.0.0/13', '173.245.48.0/20',
+        '188.114.96.0/20', '190.93.240.0/20', '197.234.240.0/22', '198.41.128.0/17',
+        '2400:cb00::/32', '2606:4700::/32', '2803:f800::/32', '2405:b500::/32',
+        '2405:8100::/32', '2a06:98c0::/29', '2c0f:f248::/32',
+
+        // 2. 著名的公共DNS服务
+        '8.8.8.0/24', '8.8.4.0/24', // Google DNS
+        '2001:4860:4860::8888/128', '2001:4860:4860::8844/128', // Google DNS IPv6
+        '9.9.9.9/32', '149.112.112.112/32', // Quad9 DNS
+        '2620:fe::fe/128', '2620:fe::9/128', // Quad9 DNS IPv6
+        '208.67.222.222/32', '208.67.220.220/32', // OpenDNS
+        '2620:119:35::35/128', '2620:119:53::53/128' // OpenDNS IPv6
     ];
-    $ip_long = ip2long($ip);
-    if ($ip_long === false) return false;
-    foreach ($excluded_cidrs as $cidr) {
-        if (strpos($cidr, ':') === false) {
-            list($subnet, $mask) = explode('/', $cidr);
-            $subnet_long = ip2long($subnet);
-            $mask_long = -1 << (32 - (int)$mask);
-            if (($ip_long & $mask_long) == ($subnet_long & $mask_long)) {
-                return true;
+
+    if ($is_ipv4) {
+        $ip_long = ip2long($ip);
+        foreach ($excluded_cidrs as $cidr) {
+            if (strpos($cidr, ':') === false) { // 只与IPv4的CIDR比较
+                list($subnet, $mask) = explode('/', $cidr);
+                $subnet_long = ip2long($subnet);
+                $mask_long = -1 << (32 - (int)$mask);
+                if (($ip_long & $mask_long) == ($subnet_long & $mask_long)) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    if ($is_ipv6) {
+        $ip_bin = inet_pton($ip);
+        foreach ($excluded_cidrs as $cidr) {
+            if (strpos($cidr, ':') !== false) { // 只与IPv6的CIDR比较
+                list($subnet, $mask) = explode('/', $cidr);
+                $subnet_bin = inet_pton($subnet);
+                if ($subnet_bin === false) continue;
+                
+                $mask_bin = '';
+                $full_bytes = floor($mask / 8);
+                for ($i = 0; $i < $full_bytes; $i++) {
+                    $mask_bin .= "\xff";
+                }
+                $remaining_bits = $mask % 8;
+                if ($remaining_bits > 0) {
+                    $mask_bin .= chr(0xff << (8 - $remaining_bits));
+                }
+                $mask_bin = str_pad($mask_bin, 16, "\0");
+
+                if (($ip_bin & $mask_bin) === ($subnet_bin & $mask_bin)) {
+                    return true;
+                }
             }
         }
     }
@@ -118,9 +158,9 @@ function 验证反代IP($反代IP地址, $指定端口) {
 }
 
 /**
- * 包装函数，获取并返回IP的地理位置作为colo
+ * 包装函数，获取并返回IP的地理位置
  */
-function CheckProxyIP($proxyIP, $colo_fallback = 'N/A') {
+function CheckProxyIP($proxyIP, $country_fallback = 'N/A') {
     $portRemote = 443;
     $ip = $proxyIP;
     
@@ -146,7 +186,7 @@ function CheckProxyIP($proxyIP, $colo_fallback = 'N/A') {
         $ip_to_check = trim($ip, '[]');
         $isSuccessful = 验证反代IP($ip_to_check, $portRemote);
         
-        $final_colo = $colo_fallback;
+        $final_country = $country_fallback;
 
         if ($isSuccessful[0]) {
             try {
@@ -157,7 +197,7 @@ function CheckProxyIP($proxyIP, $colo_fallback = 'N/A') {
 
                 $geo_data = json_decode($geo_response, true);
                 if (isset($geo_data['countryCode']) && !empty($geo_data['countryCode'])) {
-                    $final_colo = $geo_data['countryCode'];
+                    $final_country = $geo_data['countryCode'];
                 }
             } catch (Exception $e) {
                 // geo查询失败不影响整体结果
@@ -168,7 +208,7 @@ function CheckProxyIP($proxyIP, $colo_fallback = 'N/A') {
             'success' => $isSuccessful[0],
             'proxyIP' => $ip_to_check,
             'portRemote' => $portRemote,
-            'colo' => $final_colo,
+            'country' => $final_country,
             'responseTime' => $isSuccessful[2] ?? -1,
             'message' => $isSuccessful[1],
             'timestamp' => gmdate('Y-m-d\TH:i:s.v\Z'),
@@ -178,7 +218,7 @@ function CheckProxyIP($proxyIP, $colo_fallback = 'N/A') {
             'success' => false,
             'proxyIP' => -1,
             'portRemote' => -1,
-            'colo' => $colo_fallback,
+            'country' => $country_fallback,
             'responseTime' => -1,
             'message' => $e->getMessage(),
             'timestamp' => gmdate('Y-m-d\TH:i:s.v\Z'),
@@ -269,90 +309,90 @@ function HTML($hostname, $网站图标, $BEIAN, $临时TOKEN) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-        --primary-color: #3498db; --primary-dark: #2980b9; --secondary-color: #1abc9c;
-        --success-color: #2ecc71; --warning-color: #f39c12; --error-color: #e74c3c;
-        --bg-primary: #ffffff; --bg-secondary: #f8f9fa; --bg-tertiary: #e9ecef;
-        --text-primary: #2c3e50; --text-secondary: #6c757d; --text-light: #adb5bd;
-        --border-color: #dee2e6; --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
-        --shadow-md: 0 4px 6px rgba(0,0,0,0.1); --shadow-lg: 0 10px 25px rgba(0,0,0,0.15);
-        --border-radius: 12px; --border-radius-sm: 8px; --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --primary-color: #3498db; --primary-dark: #2980b9; --secondary-color: #1abc9c;
+            --success-color: #2ecc71; --warning-color: #f39c12; --error-color: #e74c3c;
+            --bg-primary: #ffffff; --bg-secondary: #f8f9fa; --bg-tertiary: #e9ecef;
+            --text-primary: #2c3e50; --text-secondary: #6c757d; --text-light: #adb5bd;
+            --border-color: #dee2e6; --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.1); --shadow-lg: 0 10px 25px rgba(0,0,0,0.15);
+            --border-radius: 12px; --border-radius-sm: 8px; --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        line-height: 1.6; color: var(--text-primary);
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh; position: relative; overflow-x: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6; color: var(--text-primary);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; position: relative; overflow-x: hidden;
         }
         .container { max-width: 1000px; margin: 40px auto; padding: 20px; }
         .header { text-align: center; margin-bottom: 50px; animation: fadeInDown 0.8s ease-out; }
         .main-title {
-        font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 700;
-        background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-        margin-bottom: 16px; text-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 700;
+            background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            margin-bottom: 16px; text-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         .card {
-        background: var(--bg-primary); border-radius: var(--border-radius);
-        padding: 32px; box-shadow: var(--shadow-lg); margin-bottom: 32px;
-        border: 1px solid var(--border-color); transition: var(--transition);
-        animation: fadeInUp 0.8s ease-out; backdrop-filter: blur(20px);
-        position: relative; overflow: hidden;
+            background: var(--bg-primary); border-radius: var(--border-radius);
+            padding: 32px; box-shadow: var(--shadow-lg); margin-bottom: 32px;
+            border: 1px solid var(--border-color); transition: var(--transition);
+            animation: fadeInUp 0.8s ease-out; backdrop-filter: blur(20px);
+            position: relative; overflow: hidden;
         }
         .card::before {
-        content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px;
-        background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
         }
         .form-section { margin-bottom: 32px; }
         .form-label { display: block; font-weight: 600; font-size: 1.1rem; margin-bottom: 12px; color: var(--text-primary); }
         .input-group { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
         .input-wrapper { flex: 1; min-width: 300px; position: relative; }
         .form-input {
-        width: 100%; padding: 16px 20px; border: 2px solid var(--border-color);
-        border-radius: var(--border-radius-sm); font-size: 16px; font-family: inherit;
-        transition: var(--transition); background: var(--bg-primary); color: var(--text-primary);
+            width: 100%; padding: 16px 20px; border: 2px solid var(--border-color);
+            border-radius: var(--border-radius-sm); font-size: 16px; font-family: inherit;
+            transition: var(--transition); background: var(--bg-primary); color: var(--text-primary);
         }
         .form-input:focus {
-        outline: none; border-color: var(--primary-color);
-        box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.1);
+            outline: none; border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.1);
         }
         .btn {
-        padding: 16px 32px; border: none; border-radius: var(--border-radius-sm);
-        font-size: 16px; font-weight: 600; font-family: inherit; cursor: pointer;
-        transition: var(--transition); text-decoration: none; display: inline-flex;
-        align-items: center; justify-content: center; gap: 8px; min-width: 120px;
+            padding: 16px 32px; border: none; border-radius: var(--border-radius-sm);
+            font-size: 16px; font-weight: 600; font-family: inherit; cursor: pointer;
+            transition: var(--transition); text-decoration: none; display: inline-flex;
+            align-items: center; justify-content: center; gap: 8px; min-width: 120px;
         }
         .btn-primary {
-        background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-        color: white; box-shadow: var(--shadow-md);
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white; box-shadow: var(--shadow-md);
         }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(52, 152, 219, 0.3); }
         .btn-primary:disabled { background: var(--text-light); cursor: not-allowed; }
         .loading-spinner {
-        width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3);
-        border-top: 2px solid white; border-radius: 50%; animation: spin 1s linear infinite;
+            width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid white; border-radius: 50%; animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .result-section { margin-top: 32px; opacity: 0; transform: translateY(20px); transition: var(--transition); }
         .result-section.show { opacity: 1; transform: translateY(0); }
         .result-card {
-        border-radius: var(--border-radius-sm); padding: 24px; margin-bottom: 16px;
-        border-left: 4px solid; position: relative; overflow: hidden;
+            border-radius: var(--border-radius-sm); padding: 24px; margin-bottom: 16px;
+            border-left: 4px solid; position: relative; overflow: hidden;
         }
         .result-success { background: #f0fff4; border-color: var(--success-color); color: #2f855a; }
         .result-error { background: #fff5f5; border-color: var(--error-color); color: #c53030; }
         .result-warning { background: #fffaf0; border-color: var(--warning-color); color: #dd6b20; }
         .ip-grid { display: grid; gap: 16px; margin-top: 20px; }
         .ip-item {
-        background: rgba(255,255,255,0.9); border: 1px solid var(--border-color);
-        border-radius: var(--border-radius-sm); padding: 20px; transition: var(--transition);
+            background: rgba(255,255,255,0.9); border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-sm); padding: 20px; transition: var(--transition);
         }
         .ip-status-line { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .status-icon { font-size: 18px; margin-left: auto; }
         .copy-btn {
-        background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 6px 12px;
-        border-radius: 6px; font-size: 14px; cursor: pointer; transition: var(--transition);
-        display: inline-flex; align-items: center; gap: 4px; margin: 4px 0;
+            background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 6px 12px;
+            border-radius: 6px; font-size: 14px; cursor: pointer; transition: var(--transition);
+            display: inline-flex; align-items: center; gap: 4px; margin: 4px 0;
         }
         .copy-btn:hover { background: var(--primary-color); color: white; border-color: var(--primary-color); }
         .copy-btn.copied { background: var(--success-color); color: white; border-color: var(--success-color); }
@@ -360,52 +400,79 @@ function HTML($hostname, $网站图标, $BEIAN, $临时TOKEN) {
         .tag-country { background: #e3f2fd; color: #1976d2; }
         .tag-as { background: #f3e5f5; color: #7b1fa2; }
         .api-docs {
-        background: var(--bg-primary); border-radius: var(--border-radius); padding: 32px;
-        box-shadow: var(--shadow-lg); animation: fadeInUp 0.8s ease-out 0.2s both;
+            background: var(--bg-primary); border-radius: var(--border-radius); padding: 32px;
+            box-shadow: var(--shadow-lg); animation: fadeInUp 0.8s ease-out 0.2s both;
         }
         .section-title {
-        font-size: 1.8rem; font-weight: 700; color: var(--text-primary);
-        margin-bottom: 24px; position: relative; padding-bottom: 12px;
+            font-size: 1.8rem; font-weight: 700; color: var(--text-primary);
+            margin-bottom: 24px; position: relative; padding-bottom: 12px;
         }
         .section-title::after {
-        content: ""; position: absolute; bottom: 0; left: 0; width: 60px; height: 3px;
-        background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-        border-radius: 2px;
+            content: ""; position: absolute; bottom: 0; left: 0; width: 60px; height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            border-radius: 2px;
         }
         .code-block {
-        background: #2d3748; color: #e2e8f0; padding: 20px;
-        border-radius: var(--border-radius-sm); font-family: 'Monaco', 'Menlo', monospace;
-        font-size: 14px; overflow-x: auto; margin: 16px 0; border: 1px solid #4a5568;
+            background: #2d3748; color: #e2e8f0; padding: 20px;
+            border-radius: var(--border-radius-sm); font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px; overflow-x: auto; margin: 16px 0; border: 1px solid #4a5568;
         }
         .footer { text-align: center; padding: 40px 20px 20px; color: rgba(255,255,255,0.8); font-size: 14px; margin-top: 40px; }
         .footer a { color: rgba(255,255,255,0.9); text-decoration: none; transition: color 0.3s; }
         .footer a:hover { color: white; }
         .github-corner { position: fixed; top: 0; right: 0; z-index: 1000; }
         .github-corner svg { fill: rgba(255,255,255,0.9); color: var(--primary-color); width: 80px; height: 80px; }
+        .toast {
+            position: fixed; bottom: 20px; right: 20px; background: var(--text-primary);
+            color: white; padding: 12px 20px; border-radius: var(--border-radius-sm);
+            box-shadow: var(--shadow-lg); transform: translateY(100px); opacity: 0;
+            transition: var(--transition); z-index: 1000;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            opacity: 0;
+            background-color: #2c3e50;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 8px 12px;
+            position: absolute;
+            z-index: 100;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            font-size: 14px;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+      
         @keyframes fadeInDown{from{opacity:0;transform:translateY(-30px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
         @media (max-width: 768px) {
-        .container { margin-top: 20px; }
-        .card, .api-docs { padding: 24px; }
-        .input-group { flex-direction: column; align-items: stretch; }
-        .btn { width: 100%; }
+            .container { margin-top: 20px; }
+            .card, .api-docs { padding: 24px; }
+            .input-group { flex-direction: column; align-items: stretch; }
+            .btn { width: 100%; }
+            .tooltip .tooltiptext {
+                left: auto;
+                right: 0;
+                transform: translateX(0);
+                white-space: normal;
+                word-wrap: break-word;
+                width: 260px;
+                font-size: 11px;
+            }
         }
-        .toast {
-        position: fixed; bottom: 20px; right: 20px; background: var(--text-primary);
-        color: white; padding: 12px 20px; border-radius: var(--border-radius-sm);
-        box-shadow: var(--shadow-lg); transform: translateY(100px); opacity: 0;
-        transition: var(--transition); z-index: 1000;
-        }
-        .toast.show { transform: translateY(0); opacity: 1; }
-        .tooltip { position: relative; display: inline-block; cursor: help; }
-        .tooltip .tooltiptext {
-        visibility: hidden; width: 320px; background-color: #2c3e50;
-        color: #fff; text-align: left; border-radius: 8px; padding: 12px 16px;
-        position: absolute; z-index: 1; bottom: 125%; left: 50%;
-        margin-left: -160px; opacity: 0; transition: opacity 0.3s;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3); font-size: 14px;
-        }
-        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
     </style>
     </head>
     <body>
@@ -470,10 +537,10 @@ function HTML($hostname, $网站图标, $BEIAN, $临时TOKEN) {
           <h3 style="color: var(--text-primary); margin: 24px 0 16px;">🔗 响应Json格式</h3>
           <div class="code-block">
 {<br>
-&nbsp;&nbsp;"success": true|false, // 代理 IP 是否有效<br>
+&nbsp;&nbsp;"success": true | false, // 代理 IP 是否有效<br>
 &nbsp;&nbsp;"proxyIP": "1.2.3.4", // 如果有效,返回代理 IP,否则为 -1<br>
 &nbsp;&nbsp;"portRemote": 443, // 如果有效,返回端口,否则为 -1<br>
-&nbsp;&nbsp;"colo": "SJC", // 执行此次请求的服务器标识<br>
+&nbsp;&nbsp;"country": "US", // 执行此次请求的服务器标识<br>
 &nbsp;&nbsp;"responseTime": "166", // 如果有效,返回响应毫秒时间,否则为 -1<br>
 &nbsp;&nbsp;"message": "第1次验证有效ProxyIP", // 返回验证信息<br>
 &nbsp;&nbsp;"timestamp": "2025-06-03T17:27:52.946Z" // 检查时间<br>
@@ -619,16 +686,45 @@ function HTML($hostname, $网站图标, $BEIAN, $临时TOKEN) {
     }
     
     async function checkSingleIP(proxyip, resultDiv) {
-      const data = await checkIPStatus(proxyip);
-      if (data.success) {
-        const ipInfo = await getIPInfo(data.proxyIP);
-        const ipInfoHTML = formatIPInfo(ipInfo);
-        const responseTimeHTML = data.responseTime > 0 ? `<div class="tooltip"><span style="background:var(--success-color);color:white;padding:4px 8px;border-radius:6px;font-weight:600;">\${data.responseTime}ms</span><span class="tooltiptext">这是从**您的服务器(\${data.colo})**到ProxyIP的延迟。</span></div>` : '';
-        resultDiv.innerHTML = `<div class="result-card result-success"><h3>✅ ProxyIP 有效</h3><div style="margin-top:20px;"><div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;"><strong>🌐 ProxyIP 地址:</strong> \${createCopyButton(data.proxyIP)} \${ipInfoHTML} \${responseTimeHTML}</div><p><strong>🔌 端口:</strong> \${createCopyButton(data.portRemote.toString())}</p></div></div>`;
-      } else {
-        resultDiv.innerHTML = `<div class="result-card result-error"><h3>❌ ProxyIP 无效</h3><div style="margin-top:20px;"><div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;"><strong>🌐 IP地址:</strong> \${createCopyButton(proxyip)}</div><p><strong>错误信息:</strong> \${data.message}</p></div></div>`;
-      }
-      resultDiv.classList.add('show');
+        const data = await checkIPStatus(proxyip);
+
+        if (data.success) {
+            const ipInfo = await getIPInfo(data.proxyIP);
+            const ipInfoHTML = formatIPInfo(ipInfo);
+            const responseTimeHTML = data.responseTime > 0
+                ? `
+                    <div class="tooltip">
+                        <span style="background:var(--success-color);color:white;padding:4px 8px;border-radius:6px;font-weight:600;">\${data.responseTime}ms</span>
+                        <span class="tooltiptext">这是从 <strong>您的服务器位置 (\${data.country})</strong> 到 ProxyIP 的延迟</span>
+                    </div>
+                `
+                : '';
+
+            resultDiv.innerHTML = `
+                <div class="result-card result-success">
+                    <h3>✅ ProxyIP 有效</h3>
+                    <div style="margin-top:20px;">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+                            <strong>🌐 ProxyIP 地址:</strong>\${createCopyButton(data.proxyIP)}\${ipInfoHTML}\${responseTimeHTML}
+                        </div>
+                        <p><strong>🔌 端口:</strong>\${createCopyButton(data.portRemote.toString())}</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="result-card result-error">
+                    <h3>❌ ProxyIP 无效</h3>
+                    <div style="margin-top:20px;">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+                            <strong>🌐 IP地址:</strong>\${createCopyButton(proxyip)}
+                        </div>
+                        <p><strong>错误信息:</strong>\${data.message}</p>
+                    </div>
+                </div>
+            `;
+        }
+        resultDiv.classList.add('show');
     }
     
     async function checkDomain(domain, resultDiv) {
