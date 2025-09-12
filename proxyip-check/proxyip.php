@@ -21,20 +21,36 @@ function isExcludedIP($ip) {
 
     $excluded_cidrs = [
         // 1. Cloudflare 自身的IP地址段 (模拟Worker无法连接自身的限制)
-        '1.0.0.0/24', '1.1.1.0/24', '103.21.244.0/22', '103.22.200.0/22',
-        '103.31.4.0/22', '104.16.0.0/13', '108.162.192.0/18', '131.0.72.0/22',
-        '141.101.64.0/18', '162.158.0.0/15', '172.64.0.0/13', '173.245.48.0/20',
-        '188.114.96.0/20', '190.93.240.0/20', '197.234.240.0/22', '198.41.128.0/17',
-        '2400:cb00::/32', '2606:4700::/32', '2803:f800::/32', '2405:b500::/32',
-        '2405:8100::/32', '2a06:98c0::/29', '2c0f:f248::/32',
+        '103.21.244.0/22', '103.22.200.0/22', '103.31.4.0/22',
+        '104.16.0.0/12', '108.162.192.0/18', '131.0.72.0/22',
+        '141.101.64.0/18', '162.158.0.0/15', '172.64.0.0/13',
+        '173.245.48.0/20', '188.114.96.0/20', '190.93.240.0/20',
+        '197.234.240.0/22', '198.41.128.0/17',
+        '2400:cb00::/32', '2606:4700::/32', '2803:f800::/32',
+        '2405:b500::/32', '2405:8100::/32', '2a06:98c0::/29',
+        '2c0f:f248::/32',
 
         // 2. 著名的公共DNS服务
-        '8.8.8.0/24', '8.8.4.0/24', // Google DNS
-        '2001:4860:4860::8888/128', '2001:4860:4860::8844/128', // Google DNS IPv6
-        '9.9.9.9/32', '149.112.112.112/32', // Quad9 DNS
-        '2620:fe::fe/128', '2620:fe::9/128', // Quad9 DNS IPv6
-        '208.67.222.222/32', '208.67.220.220/32', // OpenDNS
-        '2620:119:35::35/128', '2620:119:53::53/128' // OpenDNS IPv6
+        '8.8.8.0/24', '8.8.4.0/24',  // Google DNS
+        '2001:4860:4860::8888/128', '2001:4860:4860::8844/128',  // Google DNS IPv6
+        '9.9.9.9/32', '149.112.112.112/32',  // Quad9 DNS
+        '2620:fe::fe/128', '2620:fe::9/128',  // Quad9 DNS IPv6
+        '208.67.222.222/32', '208.67.220.220/32',  // OpenDNS
+        '2620:119:35::35/128', '2620:119:53::53/128',  // OpenDNS IPv6
+        '1.1.1.0/24', '1.0.0.0/24',  // Cloudflare DNS
+        '2606:4700::/32', '2606:4700:1111::/32',  // Cloudflare DNS IPv6
+        '94.140.14.14/32', '94.140.15.15/32',  // AdGuard DNS
+        '2a10:50c0::ad1:ff/128', '2a10:50c0::ad2:ff/128',  // AdGuard DNS IPv6
+        '185.228.168.9/32', '185.228.169.9/32',  // CleanBrowsing DNS
+        '185.228.168.168/32', '185.228.169.168/32',  // CleanBrowsing DNS IPv6
+        '198.101.242.72/32', '198.101.242.74/32',  // Alternate DNS
+        '2001:67c:2e8::/32', '2001:67c:2e8:1::/32',  // Alternate DNS IPv6
+        '76.76.19.19/32', '76.76.20.20/32',  // Control D DNS
+        '2001:67c:2e8::/32', '2001:67c:2e8:1::/32',  // Control D DNS IPv6
+        '84.200.69.80/32', '84.200.70.40/32',  // DNS.Watch
+        '2001:1608:10:25::/32', '2001:1608:10:25:1::/32',  // DNS.Watch IPv6
+        '185.121.177.177/32', '185.121.177.178/32',  // OpenNIC DNS
+        '2001:67c:2e8::/32', '2001:67c:2e8:1::/32',  // OpenNIC DNS IPv6
     ];
 
     if ($is_ipv4) {
@@ -324,7 +340,7 @@ function HTML($hostname, $网站图标, $BEIAN, $临时TOKEN) {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh; position: relative; overflow-x: hidden;
         }
-        .container { max-width: 1000px; margin: 40px auto; padding: 20px; }
+        .container { max-width: 1000px; margin: 40px auto 10px auto; padding: 20px; }
         .header { text-align: center; margin-bottom: 50px; animation: fadeInDown 0.8s ease-out; }
         .main-title {
             font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 700;
@@ -417,7 +433,7 @@ function HTML($hostname, $网站图标, $BEIAN, $临时TOKEN) {
             border-radius: var(--border-radius-sm); font-family: 'Monaco', 'Menlo', monospace;
             font-size: 14px; overflow-x: auto; margin: 16px 0; border: 1px solid #4a5568;
         }
-        .footer { text-align: center; padding: 40px 20px 20px; color: rgba(255,255,255,0.8); font-size: 14px; margin-top: 40px; }
+        .footer { text-align: center; padding: 20px 20px 20px; color: rgba(255,255,255,0.8); font-size: 14px; margin-top: 10px; }
         .footer a { color: rgba(255,255,255,0.9); text-decoration: none; transition: color 0.3s; }
         .footer a:hover { color: white; }
         .github-corner { position: fixed; top: 0; right: 0; z-index: 1000; }
@@ -444,8 +460,8 @@ function HTML($hostname, $网站图标, $BEIAN, $临时TOKEN) {
             position: absolute;
             z-index: 100;
             bottom: 125%;
-            left: 50%;
-            transform: translateX(-50%);
+            left: auto;
+            right: 0;
             white-space: nowrap;
             box-shadow: 0 4px 20px rgba(0,0,0,0.2);
             font-size: 14px;
@@ -464,12 +480,11 @@ function HTML($hostname, $网站图标, $BEIAN, $临时TOKEN) {
             .input-group { flex-direction: column; align-items: stretch; }
             .btn { width: 100%; }
             .tooltip .tooltiptext {
-                left: auto;
-                right: 0;
-                transform: translateX(0);
                 white-space: normal;
                 word-wrap: break-word;
-                width: 260px;
+                width: auto;
+                min-width: 140px;
+                max-width: 240px;
                 font-size: 11px;
             }
         }
@@ -695,7 +710,7 @@ function HTML($hostname, $网站图标, $BEIAN, $临时TOKEN) {
                 ? `
                     <div class="tooltip">
                         <span style="background:var(--success-color);color:white;padding:4px 8px;border-radius:6px;font-weight:600;">\${data.responseTime}ms</span>
-                        <span class="tooltiptext">这是从 <strong>您的服务器位置 (\${data.country})</strong> 到 ProxyIP 的延迟</span>
+                        <span class="tooltiptext">从 <strong>服务器位置 (\${data.country})</strong> 到 ProxyIP 的延迟</span>
                     </div>
                 `
                 : '';
