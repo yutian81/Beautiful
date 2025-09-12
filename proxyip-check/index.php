@@ -444,7 +444,7 @@
                     <div class="tool-icon">🌐</div>
                     <h3 class="tool-title">ProxyIP 可用性检测</h3>
                     <p class="tool-desc">检测 ProxyIP 的连接性、响应时间和可用性，确保您的代理服务稳定可靠</p>
-                    <a href="./proxyip.php" class="btn btn-primary">
+                    <a href="/proxyip" class="btn btn-primary">
                         <span class="btn-icon">🔍</span> 立即检测
                     </a>
                 </div>
@@ -453,7 +453,7 @@
                     <div class="tool-icon">🔒</div>
                     <h3 class="tool-title">Socks5/HTTP 代理检测</h3>
                     <p class="tool-desc">全面测试Socks5和HTTP代理的连通性、认证机制和传输性能</p>
-                    <a href="./socks5.php" class="btn btn-primary">
+                    <a href="/socks5" class="btn btn-primary">
                         <span class="btn-icon">🔍</span> 立即检测
                     </a>
                 </div>
@@ -462,7 +462,7 @@
                     <div class="tool-icon">🔄</div>
                     <h3 class="tool-title">DNS64/NAT64 可用性检测</h3>
                     <p class="tool-desc">验证DNS64和NAT64转换服务的可用性及IPv6转换效率</p>
-                    <a href="./nat64.php" class="btn btn-primary">
+                    <a href="/nat64" class="btn btn-primary">
                         <span class="btn-icon">🔍</span> 立即检测
                     </a>
                 </div>
@@ -498,8 +498,8 @@
         <div class="footer">
             <p>© 2025 网络代理检测工具集 | 基于 PHP 构建 |
                 <a href="https://github.com/cmliu">原作者 CMliu</a> |
-                <a href="https://github.com/yutian81">PHP聚合 Yutian81</a> |
-                <a href="https://blog.811520.xyz">青云志Blog</a>
+                <a href="https://github.com/yutian81">修改 Yutian81</a> |
+                <a href="https://blog.811520.xyz">QingYun Blog</a>
             </p>
         </div>
     </div>
