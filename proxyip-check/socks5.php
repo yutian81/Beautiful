@@ -2,8 +2,6 @@
 // PHP 版本：建议 7.4 或更高
 // 依赖扩展：curl, sockets (通常默认启用)
 // 增加错误报告，方便调试
-// ini_set('display_errors', 1);
-// error_reporting(E_ALL);
 require_once 'config.php';
 
 // --- 1. 配置 & 环境变量读取 ---
