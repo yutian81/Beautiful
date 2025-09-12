@@ -4,3 +4,18 @@ SetEnv URL302 ""
 SetEnv URL ""
 SetEnv BEIAN "<p>© 2025 ProxyIP 检测合集 | 基于 PHP 构建 | <a href=\"https://github.com/cmliu\">原作者 CMliu</a> | <a href=\"https://github.com/yutian81\">修改 Yutian81</a> | <a href=\"https://blog.811520.xyz\">青云志Blog</a></p>"
 SetEnv IMG ""
+
+RewriteEngine On
+
+# --- URL 重写规则 ---
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^proxyip/?$ proxyip.php [L,QSA]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^socks5/?$ socks5.php [L,QSA]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^nat64/?$ nat64.php [L,QSA]
