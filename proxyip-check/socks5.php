@@ -292,7 +292,7 @@ function 代理URL($代理网址, $目标网址) {
  */
 function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
     $网站图标_html = $网站图标 ? '<link rel="icon" href="' . htmlspecialchars($网站图标) . '" type="image/x-icon">' : '';
-    $img_style = $img ? "background-image: url('" . htmlspecialchars($img) . "');" : "background: #ffffff;";
+    $img_style = $img ? "background-image: url('" . htmlspecialchars($img) . "');" : "";
     $网络备案_html = $BEIAN;
     $临时TOKEN_JS = htmlspecialchars($临时TOKEN);
 
