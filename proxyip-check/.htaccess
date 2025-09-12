@@ -2,7 +2,7 @@ SetEnv ICO "https://cf-assets.www.cloudflare.com/dzlvafdwdttg/19kSkLSfWtDcspvQI5
 SetEnv TOKEN ""
 SetEnv URL302 ""
 SetEnv URL ""
-SetEnv BEIAN "<p>© 2025 ProxyIP 检测合集 | 基于 PHP 构建 | <a href=\"https://github.com/cmliu\">原作者 CMliu</a> | <a href=\"https://github.com/yutian81\">修改 Yutian81</a> | <a href=\"https://blog.811520.xyz\">青云志Blog</a></p>"
+SetEnv BEIAN "<p>© 2025 ProxyIP 检测合集 | 基于 PHP 构建 | <a href=\"https://github.com/cmliu\">原作者 CMliu</a> | <a href=\"https://github.com/yutian81\">修改 Yutian81</a> | <a href=\"https://blog.811520.xyz\">QingYun Blog</a></p>"
 SetEnv IMG ""
 
 RewriteEngine On
