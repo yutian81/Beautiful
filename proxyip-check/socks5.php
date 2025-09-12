@@ -421,7 +421,6 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
     .ip-option { padding: 8px 12px; cursor: pointer; }
     .ip-option:hover { background-color: #f8f9fa; }
     .ip-option.active { background-color: #e9ecef; font-weight: bold; }
-    .footer { text-align: center; padding: 20px; color: var(--text-secondary); font-size: 0.9em; background-color: #f8f9fa; }
     .github-corner svg { fill: var(--primary-color); color: #fff; position: fixed; top: 0; border: 0; right: 0; width: 80px; height: 80px; z-index: 10; }
     .github-corner:hover .octo-arm { animation: octocat-wave 560ms ease-in-out; }
     @keyframes octocat-wave { 0%,100%{transform:rotate(0)} 20%,60%{transform:rotate(-25deg)} 40%,80%{transform:rotate(10deg)} }
@@ -430,7 +429,6 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
         text-align: center;
         padding: 25px 15px 25px 15px;
         font-size: 15px;
-        /*border-top: 1px solid var(--border-color);*/
         border-radius: 0 0 var(--border-radius) var(--border-radius);
         background: transparent;
         backdrop-filter: none;
