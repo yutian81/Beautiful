@@ -1,7 +1,6 @@
 <?php
 // PHP 版本：建议 7.4 或更高
 // 依赖扩展：curl, sockets (通常默认启用)
-// 增加错误报告，方便调试
 require_once 'config.php';
 
 // --- 1. 配置 & 环境变量读取 ---
@@ -9,77 +8,73 @@ $网站图标 = defined('ICO') && ICO ? ICO : 'https://cf-assets.www.cloudflare.
 $永久TOKEN = defined('TOKEN') && TOKEN ? TOKEN : null;
 $URL302 = defined('URL302') ? URL302 : null;
 $URL = defined('URL') ? URL : null;
-$BEIAN = defined('BEIAN') && BEIAN ? BEIAN : '© 2025 ProxyIP Check';
+$BEIAN = defined('BEIAN') && BEIAN ? BEIAN : '© 2025 Socks5/HTTP Check';
 $IMG = defined('IMG') ? IMG : null;
+
 
 // --- 2. 核心工具函数 ---
 
-/**
- * 实现与JS版本相同的双重哈希算法来生成TOKEN
- */
 function 双重哈希($文本) {
-    $第一次十六进制 = md5($文本);
-    $第二次十六进制 = md5(substr($第一次十六进制, 7, 20));
-    return strtolower($第二次十六进制);
+    return strtolower(md5(substr(md5($文本), 7, 20)));
 }
 
-/**
- * 将多种分隔符的字符串整理成唯一的数组
- */
 function 整理($内容) {
-    $替换后的内容 = preg_replace('/[  |"\'\r\n]+/', ',', $内容);
+    $替换后的内容 = preg_replace('/[ \t|"\'\r\n]+/', ',', $内容);
     $替换后的内容 = preg_replace('/,+/', ',', $替换后的内容);
     $替换后的内容 = trim($替换后的内容, ',');
     return array_filter(explode(',', $替换后的内容));
 }
 
-/**
- * 解析 SOCKS5/HTTP 代理地址字符串
- * @param string $address
- * @return array
- * @throws Exception
- */
 function socks5AddressParser($address) {
+    // 预处理，去除协议前缀
+    if (strpos($address, '://') !== false) {
+        $address = substr($address, strpos($address, '://') + 3);
+    }
+
+    // 认证@主机
     $lastAtIndex = strrpos($address, "@");
-    $latter = ($lastAtIndex === false) ? $address : substr($address, $lastAtIndex + 1);
-    $former = ($lastAtIndex === false) ? null : substr($address, 0, $lastAtIndex);
+    $hostPart = ($lastAtIndex === false) ? $address : substr($address, $lastAtIndex + 1);
+    $authPart = ($lastAtIndex === false) ? null : substr($address, 0, $lastAtIndex);
     
     $username = $password = null;
-    if ($former) {
-        $formers = explode(":", $former, 2);
-        if (count($formers) !== 2) {
+    if ($authPart) {
+        // 使用 limit=2 来确保密码中的 ':' 不会影响解析
+        $auth_parts = explode(":", $authPart, 2);
+        if (count($auth_parts) !== 2) {
             throw new Exception('无效的代理地址格式：认证部分必须是 "username:password" 的形式');
         }
-        list($username, $password) = $formers;
+        list($username, $password) = $auth_parts;
     }
 
     $hostname = '';
-    $port = 80;
+    $port = 0;
 
-    // 检查是否是IPv6地址带端口格式 [xxx]:port
-    if (preg_match('/^(\[.*\]):(\d+)$/', $latter, $matches)) {
+    // 优化主机和端口的解析，能正确处理IPv6
+    if (preg_match('/^(\[.+\]):(\d+)$/', $hostPart, $matches)) {
+        // 匹配 IPv6 地址: [ipv6]:port
         $hostname = $matches[1];
         $port = (int)$matches[2];
     } else {
-        $latters = explode(":", $latter);
-        if (count($latters) > 1) {
-            $portStr = array_pop($latters);
-            if (is_numeric($portStr)) {
-                $port = (int)$portStr;
-                $hostname = implode(":", $latters);
-            } else {
-                 $hostname = $latter; // 无端口
-            }
+        // 匹配 IPv4 或域名
+        $lastColon = strrpos($hostPart, ':');
+        if ($lastColon === false) {
+            // 没有端口，根据协议使用默认端口
+            $hostname = $hostPart;
+            // 因为我们无法在这里知道协议，所以让调用者决定默认端口
+            // 但为了兼容性，我们可以暂时不设，依赖于外部逻辑
         } else {
-            $hostname = $latter;
+            $hostname = substr($hostPart, 0, $lastColon);
+            $port = (int)substr($hostPart, $lastColon + 1);
         }
     }
     
     if (empty($hostname)) {
-         throw new Exception('无效的代理地址格式：主机名不能为空');
+       throw new Exception('无效的代理地址格式：主机名不能为空');
+    }
+    if ($port === 0) { // 如果解析后端口为0，说明格式可能有问题
+        throw new Exception('无效的代理地址格式：端口号不正确');
     }
     
-    // 移除IPv6地址的方括号以便后续使用
     $hostname = trim($hostname, '[]');
 
     return [
@@ -90,29 +85,22 @@ function socks5AddressParser($address) {
     ];
 }
 
-/**
- * SOCKS5 核心连接函数
- * @return resource|false a stream resource on success, false on failure.
- */
 function socks5Connect($proxy, $targetHost, $targetPort) {
-    $socket = @stream_socket_client("tcp://{$proxy['hostname']}:{$proxy['port']}", $errno, $errstr, 5);
+    // 为IPv6地址加上方括号
+    $connect_host = filter_var($proxy['hostname'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) ? "[{$proxy['hostname']}]" : $proxy['hostname'];
+    $socket = @stream_socket_client("tcp://{$connect_host}:{$proxy['port']}", $errno, $errstr, 5);
     if (!$socket) throw new Exception("无法连接到SOCKS5代理服务器: $errstr");
-
     stream_set_timeout($socket, 5);
 
-    // 1. 发送问候
-    // SOCKSv5, 2 methods: 0x00 (no auth), 0x02 (user/pass)
     $greeting = pack('C3', 0x05, 0x02, 0x00) . pack('C', 0x02);
     if (fwrite($socket, $greeting) === false) throw new Exception("发送SOCKS5问候失败");
 
-    // 2. 接收服务器选择的方法
     $response = fread($socket, 2);
     if (strlen($response) < 2) throw new Exception("读取SOCKS5服务器响应失败");
     $res_parts = unpack('Cversion/Cmethod', $response);
     if ($res_parts['version'] !== 0x05) throw new Exception("SOCKS5服务器版本错误");
 
-    // 3. 根据方法进行认证
-    if ($res_parts['method'] === 0x02) { // User/Pass Auth
+    if ($res_parts['method'] === 0x02) {
         if (!$proxy['username']) throw new Exception("SOCKS5服务器需要认证，但未提供用户名");
         $auth_req = pack('C2', 0x01, strlen($proxy['username'])) . $proxy['username'] . pack('C', strlen($proxy['password'])) . $proxy['password'];
         if (fwrite($socket, $auth_req) === false) throw new Exception("发送SOCKS5认证请求失败");
@@ -124,81 +112,65 @@ function socks5Connect($proxy, $targetHost, $targetPort) {
         throw new Exception("SOCKS5服务器不支持所选的认证方法");
     }
 
-    // 4. 发送连接请求 (使用域名)
     $atyp = 0x03; // Domain name
     $cmd = pack('C4', 0x05, 0x01, 0x00, $atyp) . pack('C', strlen($targetHost)) . $targetHost . pack('n', $targetPort);
     if (fwrite($socket, $cmd) === false) throw new Exception("发送SOCKS5连接请求失败");
 
-    // 5. 接收连接响应
-    $response = fread($socket, 10); // Read enough for IPv4/IPv6 response
+    $response = fread($socket, 10);
     if (strlen($response) < 4) throw new Exception("读取SOCKS5连接响应失败");
     $res_parts = unpack('Cversion/Cstatus/Creserved/Catyp', $response);
     if ($res_parts['status'] !== 0x00) throw new Exception("SOCKS5连接目标失败，状态码: " . $res_parts['status']);
     
-    // 连接成功，返回 socket 资源
     return $socket;
 }
 
-/**
- * HTTP 核心连接函数
- * @return resource|false a stream resource on success, false on failure.
- */
 function httpConnect($proxy, $targetHost, $targetPort) {
-     $socket = @stream_socket_client("tcp://{$proxy['hostname']}:{$proxy['port']}", $errno, $errstr, 5);
+    $connect_host = filter_var($proxy['hostname'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) ? "[{$proxy['hostname']}]" : $proxy['hostname'];
+    $socket = @stream_socket_client("tcp://{$connect_host}:{$proxy['port']}", $errno, $errstr, 5);
     if (!$socket) throw new Exception("无法连接到HTTP代理服务器: $errstr");
-    
     stream_set_timeout($socket, 5);
 
     $connectRequest = "CONNECT {$targetHost}:{$targetPort} HTTP/1.1\r\n";
     $connectRequest .= "Host: {$targetHost}:{$targetPort}\r\n";
-    
     if ($proxy['username']) {
         $auth = base64_encode($proxy['username'] . ':' . ($proxy['password'] ?? ''));
         $connectRequest .= "Proxy-Authorization: Basic {$auth}\r\n";
     }
-    
     $connectRequest .= "User-Agent: Mozilla/5.0\r\n";
     $connectRequest .= "Proxy-Connection: Keep-Alive\r\n\r\n";
     
     if (fwrite($socket, $connectRequest) === false) throw new Exception("发送HTTP CONNECT请求失败");
     
     $response = '';
+    $startTime = time();
     while (strpos($response, "\r\n\r\n") === false) {
-        $response .= fread($socket, 1024);
+        if (time() - $startTime > 5) throw new Exception("读取HTTP代理响应超时");
+        $chunk = fread($socket, 1024);
+        if ($chunk === false) break;
+        $response .= $chunk;
     }
     
     if (stripos($response, "200 Connection established") === false && stripos($response, "200 OK") === false) {
         $first_line = substr($response, 0, strpos($response, "\r\n"));
         throw new Exception("HTTP代理连接失败: " . ($first_line ?: '未知错误'));
     }
-    
     return $socket;
 }
 
-/**
- * 通过代理发送请求并获取出口IP
- */
 function checkProxy($socket, $targetHost, $targetPath) {
     if (!is_resource($socket)) throw new Exception("无效的Socket资源");
     $httpRequest = "GET {$targetPath} HTTP/1.1\r\nHost: {$targetHost}\r\nConnection: close\r\n\r\n";
     if (fwrite($socket, $httpRequest) === false) throw new Exception("通过代理发送HTTP请求失败");
     
-    $response = '';
-    while (!feof($socket)) {
-        $response .= fread($socket, 4096);
-    }
+    $response = stream_get_contents($socket);
     fclose($socket);
     
     if (preg_match('/ip=([^\s]+)/', $response, $matches)) {
         return $matches[1];
     }
-    
     throw new Exception("无法从代理响应中获取出口IP");
 }
 
-/**
- * 获取IP信息 (支持域名解析)
- */
 function getIpInfo($ip) {
     $finalIp = $ip;
     $allIps = null;
@@ -207,7 +179,7 @@ function getIpInfo($ip) {
     if ($isDomain) {
         $records = @dns_get_record($ip, DNS_A | DNS_AAAA);
         if ($records === false || empty($records)) {
-             throw new Exception("无法解析域名 {$ip} 的 IP 地址");
+            throw new Exception("无法解析域名 {$ip} 的 IP 地址");
         }
         $allIps = array_map(function($r) { return $r['type'] === 'AAAA' ? $r['ipv6'] : $r['ip']; }, $records);
         $finalIp = $allIps[array_rand($allIps)];
@@ -218,10 +190,6 @@ function getIpInfo($ip) {
     curl_setopt($ch, CURLOPT_TIMEOUT, 5);
     $response = curl_exec($ch);
     curl_close($ch);
-    
-    if ($response === false) {
-        throw new Exception("查询IP信息失败 (cURL错误)");
-    }
     
     $data = json_decode($response, true);
     if (!$data) {
@@ -239,55 +207,24 @@ function getIpInfo($ip) {
     return $data;
 }
 
-
-/**
- * nginx 欢迎页
- */
 function nginx() {
     header('Content-Type: text/html; charset=UTF-8');
-    echo '<!DOCTYPE html><html><head><title>Welcome to nginx!</title><style>body{width:35em;margin:0 auto;font-family:Tahoma,Verdana,Arial,sans-serif}</style></head><body><h1>Welcome to nginx!</h1><p>If you see this page, the nginx web server is successfully installed and working. Further configuration is required.</p><p>For online documentation and support please refer to <a href="http://nginx.org/">nginx.org</a>.<br/>Commercial support is available at <a href="http://nginx.com/">nginx.com</a>.</p><p><em>Thank you for using nginx.</em></p></body></html>';
+    echo '<!DOCTYPE html>
+<html>
+      <head>
+          <title>Welcome to nginx!</title>
+          <style>body{width:35em;margin:0 auto;font-family:Tahoma,Verdana,Arial,sans-serif}</style>
+      </head>
+      <body>
+          <h1>Welcome to nginx!</h1>
+          <p>If you see this page, the nginx web server is successfully installed and working. Further configuration is required.</p>
+          <p>For online documentation and support please refer to <a href="http://nginx.org/">nginx.org</a>
+          .<br/>Commercial support is available at <a href="http://nginx.com/">nginx.com</a>.</p>
+          <p><em>Thank you for using nginx.</em></p>
+      </body>
+</html>';
 }
 
-/**
- * 反向代理URL (基础版)
- */
-function 代理URL($代理网址, $目标网址) {
-    $网址列表 = 整理($代理网址);
-    $完整网址 = $网址列表[array_rand($网址列表)];
-
-    $解析后的网址 = parse_url($完整网址);
-    $协议 = $解析后的网址['scheme'] ?? 'https';
-    $主机名 = $解析后的网址['host'];
-    $路径名 = rtrim($解析后的网址['path'] ?? '', '/');
-    $查询参数 = $解析后的网址['query'] ?? '';
-
-    $路径名 .= $目标网址['path'];
-    $最终查询参数 = !empty($查询参数) ? '?' . $查询参数 : ($目标网址['query'] ? '?' . $目标网址['query'] : '');
-    
-    $新网址 = "{$协议}://{$主机名}{$路径名}{$最终查询参数}";
-
-    // 使用cURL实现代理
-    $ch = curl_init($新网址);
-    // ... 此处可以添加更完整的cURL代理逻辑，为保持简洁，基础版直接请求
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HEADER, true);
-    $response = curl_exec($ch);
-    $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-    $headers = substr($response, 0, $header_size);
-    $body = substr($response, $header_size);
-    curl_close($ch);
-
-    foreach (explode("\r\n", $headers) as $header) {
-        if (!empty($header)) {
-             header($header, false); // false to not overwrite existing headers of same type
-        }
-    }
-    echo $body;
-}
-
-/**
- * 输出主页面 HTML
- */
 function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
     $网站图标_html = $网站图标 ? '<link rel="icon" href="' . htmlspecialchars($网站图标) . '" type="image/x-icon">' : '';
     $img_style = $img ? "background-image: url('" . htmlspecialchars($img) . "');" : "";
@@ -295,7 +232,6 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
     $临时TOKEN_JS = htmlspecialchars($临时TOKEN);
 
     header('Content-Type: text/html; charset=UTF-8');
-    // HEREDOC 语法输出 HTML
     echo <<<HTML
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -331,11 +267,7 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
     }
     .header {
       padding: 32px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 20px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;
       position: relative;
     }
     .header::before {
@@ -424,7 +356,6 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
     .github-corner svg { fill: var(--primary-color); color: #fff; position: fixed; top: 0; border: 0; right: 0; width: 80px; height: 80px; z-index: 10; }
     .github-corner:hover .octo-arm { animation: octocat-wave 560ms ease-in-out; }
     @keyframes octocat-wave { 0%,100%{transform:rotate(0)} 20%,60%{transform:rotate(-25deg)} 40%,80%{transform:rotate(10deg)} }
-
     .footer {
         text-align: center;
         padding: 25px 15px 25px 15px;
@@ -434,7 +365,6 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
         backdrop-filter: none;
         color: #7B838A;
     }
-
     .footer a {
         color: #7B838A;
         text-decoration: none;
@@ -442,7 +372,6 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
         position: relative;
         padding-bottom: 2px;
     }
-
     .footer a::after {
         content: '';
         position: absolute;
@@ -453,16 +382,13 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
         background: #7B838A;
         transition: width 0.3s ease;
     }
-
     .footer a:hover {
         color: #3293D4;
     }
-
     .footer a:hover::after {
         width: 100%;
         background: #3293D4;
     }
-
     @media (max-width: 768px) {
         body { align-items: flex-start; }
         .container { margin: 10px; }
@@ -486,7 +412,6 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
                 <button id="checkBtn" onclick="checkProxy()">检查代理</button>
             </div>
         </div>
-        
         <div class="results-section">
             <div class="info-card">
                 <h3>入口信息</h3>
@@ -503,9 +428,9 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
         </div>
         <div class="footer">{$网络备案_html}</div>
     </div>
+      
     <script>
         const 临时TOKEN = '{$临时TOKEN_JS}';
-        // 客户端JS逻辑，与原始版本功能一致，仅适配新UI
         let currentDomainInfo = null;
         let currentProxyTemplate = null;
 
@@ -514,7 +439,6 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
             if (processed.includes('#')) processed = processed.split('#')[0].trim();
             while (processed.startsWith('/')) processed = processed.substring(1);
             if (!processed.includes('://')) processed = 'socks5://' + processed;
-            // 更多预处理逻辑可以加在这里...
             return processed;
         }
 
@@ -525,15 +449,15 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
             return hostPart.split(':')[0];
         }
         
-        const isIPAddress = host => /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(host) || /((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?/.test(host);
+        const isIPAddress = host => /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(host) || /((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?/.test(host);
         
         function replaceHostInProxy(proxyUrl, newHost) {
             const [protocol, rest] = proxyUrl.split('://');
             let authPart = rest.includes('@') ? rest.substring(0, rest.lastIndexOf('@') + 1) : '';
             let hostPart = rest.includes('@') ? rest.substring(rest.lastIndexOf('@') + 1) : rest;
             const port = hostPart.includes(':') ? hostPart.substring(hostPart.lastIndexOf(':') + 1) : '';
-            const processedNewHost = newHost.includes(':') && !newHost.startsWith('[') ? \`[\${newHost}]\` : newHost;
-            return \`\${protocol}://\${authPart}\${processedNewHost}:\${port}\`;
+            const processedNewHost = newHost.includes(':') && !newHost.startsWith('[') ? `[\${newHost}]` : newHost;
+            return `\${protocol}://\${authPart}\${processedNewHost}:\${port}`;
         }
         
         function formatInfoDisplay(data, containerId, showIPSelector = false) {
@@ -544,18 +468,18 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
             }
             
             const ipDisplay = showIPSelector && currentDomainInfo && currentDomainInfo.all_ips.length > 1
-                ? \`<div class="ip-selector">
+                ? `<div class="ip-selector">
                         <span class="ip-text">\${data.resolved_ip || data.ip || 'N/A'}</span>
                         <button class="more-ip-btn" onclick="toggleIPDropdown(event)">\${currentDomainInfo.all_ips.length} IPs</button>
                         <div class="ip-value-container">
                             <div class="ip-dropdown" id="ipDropdown">
-                                \${currentDomainInfo.all_ips.map(ip => \`<div class="ip-option \${ip === (data.resolved_ip || data.ip) ? 'active' : ''}" onclick="selectIP('\${ip}')">\${ip}</div>\`).join('')}
+                                \${currentDomainInfo.all_ips.map(ip => `<div class="ip-option \${ip === (data.resolved_ip || data.ip) ? 'active' : ''}" onclick="selectIP('\${ip}')">\${ip}</div>`).join('')}
                             </div>
                         </div>
-                   </div>\`
+                   </div>`
                 : (data.resolved_ip || data.ip || 'N/A');
 
-            container.innerHTML = \`
+            container.innerHTML = `
                 <div class="info-item"><span class="info-label">IP 地址:</span><span class="info-value">\${ipDisplay}</span></div>
                 <div class="info-item"><span class="info-label">ASN:</span><span class="info-value">\${data.asn?.asn ? 'AS' + data.asn.asn : 'N/A'}</span></div>
                 <div class="info-item"><span class="info-label">组织:</span><span class="info-value">\${data.asn?.org || 'N/A'}</span></div>
@@ -564,7 +488,7 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
                 <div class="info-item"><span class="info-label">代理/VPN:</span><span class="info-value"><span class="\${data.is_proxy || data.is_vpn ? 'status-yes' : 'status-no'}">\${data.is_proxy || data.is_vpn ? '是' : '否'}</span></span></div>
                 <div class="info-item"><span class="info-label">Tor 节点:</span><span class="info-value"><span class="\${data.is_tor ? 'status-yes' : 'status-no'}">\${data.is_tor ? '是' : '否'}</span></span></div>
                 <div class="info-item"><span class="info-label">滥用风险:</span><span class="info-value"><span class="\${data.is_abuser ? 'status-yes' : 'status-no'}">\${data.is_abuser ? '是' : '否'}</span></span></div>
-            \`;
+            `;
         }
 
         function toggleIPDropdown(event) {
@@ -615,8 +539,8 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
                 await performCheck(proxyUrl, null, true);
             } catch (error) {
                 console.error('检测过程中出现错误:', error);
-                entryInfo.innerHTML = \`<div class="error">\${error.message}</div>\`;
-                exitInfo.innerHTML = \`<div class="error">\${error.message}</div>\`;
+                entryInfo.innerHTML = `<div class="error">\${error.message}</div>`;
+                exitInfo.innerHTML = `<div class="error">\${error.message}</div>`;
             } finally {
                 checkBtn.disabled = false;
             }
@@ -633,9 +557,9 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
 
             if (resolveDomain && !isIPAddress(host)) {
                 entryInfo.innerHTML = '<div class="loading"><div class="spinner"></div>解析域名中...</div>';
-                const response = await fetch(\`?path=/ip-info&ip=\${encodeURIComponent(host)}&token=\${临时TOKEN}\`);
+                const response = await fetch(`/socks5/ip-info?ip=\${encodeURIComponent(host)}&token=\${临时TOKEN}`);
                 const data = await response.json();
-                if (!data.ips) throw new Error(\`域名解析失败: \${data.message || '未知错误'}\`);
+                if (!data.ips) throw new Error(`域名解析失败: \${data.message || '未知错误'}`);
                 currentDomainInfo = { all_ips: data.ips, domain: host };
                 targetIP = data.resolved_ip;
                 targetProxyUrl = replaceHostInProxy(proxyUrl, targetIP);
@@ -645,8 +569,8 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
             exitInfo.innerHTML = '<div class="loading"><div class="spinner"></div>检测代理中...</div>';
 
             const [entryResult, exitResult] = await Promise.allSettled([
-                fetch(\`?path=/ip-info&ip=\${encodeURIComponent(targetIP)}&token=\${临时TOKEN}\`).then(res => res.json()),
-                fetch(\`?path=/check&proxy=\${encodeURIComponent(targetProxyUrl)}\`).then(res => res.json())
+                fetch(`/socks5/ip-info?ip=\${encodeURIComponent(targetIP)}&token=\${临时TOKEN}`).then(res => res.json()),
+                fetch(`/socks5/check?proxy=\${encodeURIComponent(targetProxyUrl)}`).then(res => res.json())
             ]);
             
             if (entryResult.status === 'fulfilled') {
@@ -657,7 +581,7 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
             
             if (exitResult.status === 'fulfilled') {
                 if (!exitResult.value.success) {
-                    exitInfo.innerHTML = \`<div class="error">代理检测失败: \${exitResult.value.error || '请检查代理链接'}</div>\`;
+                    exitInfo.innerHTML = `<div class="error">代理检测失败: \${exitResult.value.error || '请检查代理链接'}</div>`;
                 } else {
                     formatInfoDisplay(exitResult.value, 'exitInfo', false);
                 }
@@ -673,105 +597,81 @@ function HTML($网站图标, $BEIAN, $img, $临时TOKEN) {
 HTML;
 }
 
-
 // --- 3. 主逻辑 & 路由 ---
-$path = $_GET['path'] ?? '/';
-if ($path === '/') {
-    $path = strtolower(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
-}
+$path = strtolower(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 
+// --- Token Generation ---
 $hostname = $_SERVER['HTTP_HOST'] ?? 'localhost';
 $UA = $_SERVER['HTTP_USER_AGENT'] ?? 'null';
 $timestamp = ceil(time() / (60 * 60 * 12));
 $临时TOKEN = 双重哈希($hostname . $timestamp . $UA);
 $永久TOKEN_final = $永久TOKEN ?: $临时TOKEN;
 
-switch ($path) {
-    case '/check':
-        header('Content-Type: application/json; charset=UTF-8');
-        header('Access-Control-Allow-Origin: *');
-        
-        if ($永久TOKEN && (!isset($_GET['token']) || $_GET['token'] !== $永久TOKEN_final)) {
-            // 静默检查，因为前端JS没有发送token，但可以为API调用者保留
-            if (isset($_GET['proxy'])) { // only check for token if it's an API call, not from the simple JS frontend
-                 // return new Response(...) - logic for token failure here
-            }
-        }
-
-        $proxyParam = $_GET['proxy'] ?? $_GET['socks5'] ?? $_GET['http'] ?? null;
-        if (!$proxyParam) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => '请提供有效的代理参数：socks5、http 或 proxy']);
-            exit();
-        }
-
-        $isSocks = stripos($proxyParam, 'socks5://') !== false || isset($_GET['socks5']);
-
-        try {
-            $parsedProxy = socks5AddressParser($proxyParam);
-            $targetHost = 'check.socks5.090227.xyz';
-            $targetPort = 80;
-            $targetPath = '/cdn-cgi/trace';
-
-            if ($isSocks) {
-                $socket = socks5Connect($parsedProxy, $targetHost, $targetPort);
-            } else {
-                $socket = httpConnect($parsedProxy, $targetHost, $targetPort);
-            }
-            
-            $egressIp = checkProxy($socket, $targetHost, $targetPath);
-            $ipInfo = getIpInfo($egressIp);
-
-            echo json_encode(array_merge(['success' => true, 'proxy' => $proxyParam], $ipInfo), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-
-        } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'error' => $e->getMessage(), 'proxy' => $proxyParam], JSON_UNESCAPED_UNICODE);
-        }
-        break;
-
-    case '/ip-info':
-        header('Content-Type: application/json; charset=UTF-8');
-        header('Access-Control-Allow-Origin: *');
-        
-        $token = $_GET['token'] ?? null;
-        if (!$token || ($token !== $临时TOKEN && $token !== $永久TOKEN_final)) {
-             http_response_code(403);
-             echo json_encode(['status' => 'error', 'message' => 'IP查询失败: 无效的TOKEN'], JSON_UNESCAPED_UNICODE);
-             exit();
-        }
-
-        $ip = $_GET['ip'] ?? $_SERVER['REMOTE_ADDR'];
-        if (!$ip) {
-            http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'IP参数未提供'], JSON_UNESCAPED_UNICODE);
-            exit();
-        }
-
-        try {
-            $data = getIpInfo($ip);
-            echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-        } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['status' => 'error', 'message' => 'IP查询失败: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
-        }
-        break;
-
-    default:
-        if ($永久TOKEN) {
-            nginx();
-        } elseif ($URL302) {
-            header("Location: $URL302", true, 302);
-        } elseif ($URL) {
-            代理URL($URL, parse_url($_SERVER['REQUEST_URI']));
+// --- 新的、更可靠的路由选择 ---
+if (preg_match('#/socks5/check#', $path)) {
+    // API: /socks5/check
+    header('Content-Type: application/json; charset=UTF-8');
+    $proxyParam = $_GET['proxy'] ?? $_GET['socks5'] ?? $_GET['http'] ?? null;
+    if (!$proxyParam) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => '请提供有效的代理参数：socks5、http 或 proxy'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit();
+    }
+    $isSocks = stripos($proxyParam, 'socks5://') !== false || isset($_GET['socks5']);
+    try {
+        $parsedProxy = socks5AddressParser($proxyParam);
+        $targetHost = 'check.socks5.090227.xyz';
+        $targetPort = 80;
+        $targetPath = '/cdn-cgi/trace';
+        if ($isSocks) {
+            $socket = socks5Connect($parsedProxy, $targetHost, $targetPort);
         } else {
-            $img_url = null;
-            if ($IMG) {
-                $imgs = 整理($IMG);
-                $img_url = $imgs[array_rand($imgs)];
-            }
-            HTML($网站图标, $BEIAN, $img_url, $临时TOKEN);
+            $socket = httpConnect($parsedProxy, $targetHost, $targetPort);
         }
-        break;
+        $egressIp = checkProxy($socket, $targetHost, $targetPath);
+        $ipInfo = getIpInfo($egressIp);
+        echo json_encode(array_merge(['success' => true, 'proxy' => $proxyParam], $ipInfo), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => $e->getMessage(), 'proxy' => $proxyParam], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+} elseif (preg_match('#/socks5/ip-info#', $path)) {
+    // API: /socks5/ip-info
+    header('Content-Type: application/json; charset=UTF-8');
+    $token = $_GET['token'] ?? null;
+    if (!$token || ($token !== $临时TOKEN && $token !== $永久TOKEN_final)) {
+         http_response_code(403);
+         echo json_encode(['status' => 'error', 'message' => 'IP查询失败: 无效的TOKEN'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+         exit();
+    }
+    $ip = $_GET['ip'] ?? $_SERVER['REMOTE_ADDR'];
+    if (!$ip) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'IP参数未提供'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit();
+    }
+    try {
+        $data = getIpInfo($ip);
+        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => 'IP查询失败: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+} else {
+    // 其他所有 /socks5/... 的请求，都视为页面请求
+    if ($永久TOKEN && ($永久TOKEN !== $临时TOKEN)) {
+        nginx();
+    } elseif ($URL302) {
+        header("Location: $URL302", true, 302);
+    } else {
+        $img_url = null;
+        if (defined('IMG') && IMG) {
+            $imgs = 整理(IMG);
+            $img_url = $imgs[array_rand($imgs)];
+        }
+        HTML($网站图标, $BEIAN, $img_url, $临时TOKEN);
+    }
 }
 ?>
