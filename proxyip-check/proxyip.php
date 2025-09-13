@@ -340,7 +340,7 @@ function HTML($hostname, $网站图标, $BEIAN, $临时TOKEN) {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh; position: relative; overflow-x: hidden;
         }
-        .container { max-width: 1000px; margin: 40px auto 10px auto; padding: 20px; }
+        .container { max-width: 1000px; margin: 40px auto 10px auto; padding: 20px 20px 10px 20px; }
         .header { text-align: center; margin-bottom: 50px; animation: fadeInDown 0.8s ease-out; }
         .main-title {
             font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 700;
@@ -433,7 +433,7 @@ function HTML($hostname, $网站图标, $BEIAN, $临时TOKEN) {
             border-radius: var(--border-radius-sm); font-family: 'Monaco', 'Menlo', monospace;
             font-size: 14px; overflow-x: auto; margin: 16px 0; border: 1px solid #4a5568;
         }
-        .footer { text-align: center; padding: 20px 20px 20px; color: rgba(255,255,255,0.8); font-size: 14px; margin-top: 10px; }
+        .footer { text-align: center; padding: 20px 20px 20px; color: rgba(255,255,255,0.8); font-size: 14px; margin-top: 20px; }
         .footer a { color: rgba(255,255,255,0.9); text-decoration: none; transition: color 0.3s; }
         .footer a:hover { color: white; }
         .github-corner { position: fixed; top: 0; right: 0; z-index: 1000; }
